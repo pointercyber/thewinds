@@ -25,25 +25,25 @@ const NAV = [
 ];
 
 const ROOMS = [
-  // {
-  //   n: 'Private Room',
-  //   p: '1,100',
-  //   g: 'Per Room',
-  //   b: 'One room · Two-bedroom apartment',
-  //   i: 'bedroom',
-  //   d: 'A comfortable private room in our two-bedroom apartment, perfect for travellers looking for a peaceful and affordable stay in Meppadi, Wayanad.',
-  //   a: [
-  //     'Comfortable bedroom',
-  //     'Wi-Fi',
-  //     'Hot water',
-  //     'Peaceful surroundings',
-  //     'Comfortable bedding',
-  //     'Ideal for solo travellers and couples',
-  //   ],
-  // },
   {
-    n: 'Full Apartment',
+    n: 'Full Apartment (2 Bedrooms)',
     p: '1,100',
+    g: 'Per Room',
+    b: 'One room · Two-bedroom apartment',
+    i: 'bedroom',
+    d: 'A comfortable private room in our two-bedroom apartment, perfect for travellers looking for a peaceful and affordable stay in Meppadi, Wayanad.',
+    a: [
+      'Comfortable bedroom',
+      'Wi-Fi',
+      'Hot water',
+      'Peaceful surroundings',
+      'Comfortable bedding',
+      'Ideal for solo travellers and couples',
+    ],
+  },
+  {
+    n: 'Private Room',
+    p: '2,400',
     g: 'Per person',
     b: 'Entire apartment · Two bedrooms',
     i: 'suite',
