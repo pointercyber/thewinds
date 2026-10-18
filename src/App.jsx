@@ -3,144 +3,15 @@ import { useEffect, useState } from 'react';
 import GL from './GL.jsx';
 import HeroGL from './HeroGL.jsx';
 import Loader from './Loader.jsx';
+import Admin from './Admin.jsx';
+import { DEFAULT_SITE_CONTENT, isValidSiteContent } from './siteContent.js';
+import { supabase } from './supabaseClient.js';
 
-const PHONE = '919990815181';
-
-const wa = (
-  message = 'Hi! I would like to check availability at The Winds Homestay.'
-) =>
-  `https://wa.me/${PHONE}?text=${encodeURIComponent(message)}`;
+const wa = (phone, message) =>
+  `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
 const L = (e) => e.currentTarget.classList.add('ld');
 const img = (name) => `/images/${name}.jpg`;
-
-const NAV = [
-  ['story', 'Our Story'],
-  ['why', 'Why Stay'],
-  ['rooms', 'Rooms & Rates'],
-  ['gallery', 'Gallery'],
-  ['experiences', 'Experiences'],
-  ['reviews', 'Reviews'],
-  ['book', 'Book Your Stay'],
-];
-
-const ROOMS = [
-  {
-    n: 'Full Apartment (2 Bedrooms)',
-    p: '1,100',
-    g: 'Per Room',
-    b: 'One room · Two-bedroom apartment',
-    i: 'bedroom',
-    d: 'A comfortable private room in our two-bedroom apartment, perfect for travellers looking for a peaceful and affordable stay in Meppadi, Wayanad.',
-    a: [
-      'Comfortable bedroom',
-      'Wi-Fi',
-      'Hot water',
-      'Peaceful surroundings',
-      'Comfortable bedding',
-      'Ideal for solo travellers and couples',
-    ],
-  },
-  {
-    n: 'Private Room',
-    p: '2,400',
-    g: 'Per person',
-    b: 'Entire apartment · Two bedrooms',
-    i: 'suite',
-    d: 'Enjoy the complete two-bedroom apartment with your family or group. Relax in your own space and experience the comfort and peaceful surroundings of Wayanad.',
-    a: [
-      'Entire two-bedroom apartment',
-      'Private space for your group',
-      'Comfortable bedrooms',
-      'Wi-Fi',
-      'Hot water',
-      'Ideal for families and groups',
-    ],
-  },
-];
-
-const PICS = [
-  ['home', 'The Home', 'Homestay surrounded by trees'],
-  ['hills', 'Green Views', 'Tea hills from the sit-out'],
-  ['living', 'Interiors', 'Living area'],
-  ['bedroom', 'Interiors', 'Bedroom'],
-  ['kitchen', 'Interiors', 'Kitchen'],
-  ['bath', 'Interiors', 'Bathroom'],
-  ['suite', 'Interiors', 'Bedroom doorway'],
-  ['desk', 'Interiors', 'Lounge and work nook'],
-];
-
-const EXP = [
-  [
-    'Off-Road Mountain Jeep Safari',
-    '4x4 trails, stream stops and sunset viewpoints, with drivers arranged by the host.',
-    '3–4 hours · Starts at the homestay',
-  ],
-  [
-    'Wayanad 900 Kandi Glass Bridge',
-    'Glass skywalk above the forest, zip-lining, giant swings and canopy views.',
-    '8.5 km · Approximately 18 min drive',
-  ],
-  [
-    'Tea Estate & Aromatics Walks',
-    'Walk through tea, cardamom and pepper plantations with birdwatching and a lesson in tea making.',
-    '1–2 hours · Around the homestay',
-  ],
-  [
-    'Soochipara & Meenmutty Waterfalls',
-    'Explore forest trails, waterfalls and viewpoints in the Western Ghats.',
-    'Approximately 14 km · Travel time varies',
-  ],
-];
-
-const SEAS = [
-  [
-    'Winter Mist',
-    'Oct – Feb',
-    'Cool weather and misty hills. Carry a light fleece or shawl.',
-  ],
-  [
-    'Pleasant Summer',
-    'Mar – May',
-    'Enjoy green hills and outdoor activities.',
-  ],
-  [
-    'Verdant Monsoon',
-    'Jun – Sep',
-    'Experience lush landscapes and waterfalls. Bring waterproofs and grippy shoes.',
-  ],
-];
-
-const FAQ = [
-  [
-    'Check-in and check-out times?',
-    'Check-in from 1:00 PM and check-out by 11:00 AM. Early or late arrivals may be possible with prior notice.',
-  ],
-  [
-    'What are the room rates?',
-    'The private room starts at ₹1,100 per person. The full two-bedroom apartment starts at ₹2,400 per person. Confirm the final price with the host.',
-  ],
-  [
-    'Is food available?',
-    'Ask the host about home-cooked Kerala food, breakfast and other meal options.',
-  ],
-  [
-    'Is parking available?',
-    'Please confirm parking availability with the host before booking.',
-  ],
-  [
-    'How close are the attractions?',
-    '900 Kandi Glass Bridge, Soochipara Falls and other Wayanad attractions are accessible from Meppadi. Ask the host for current travel times and access conditions.',
-  ],
-  [
-    'How do I book?',
-    'Message or call +91 99908 15181 with your check-in date, check-out date, number of guests and preferred accommodation.',
-  ],
-  [
-    'What is the cancellation policy?',
-    'Ask the host about cancellations, date changes and applicable charges before confirming your booking.',
-  ],
-];
 
 function useReveal(ready) {
   useEffect(() => {
@@ -201,14 +72,67 @@ const Sec = ({ id, tag, title, children, aside }) => (
   </section>
 );
 
-export default function App() {
+const Lines = ({ text }) =>
+  text.split('\n').map((line, index) => (
+    <span key={`${index}-${line}`}>
+      {index > 0 && <br />}
+      {line}
+    </span>
+  ));
+
+function Website() {
+  const [site, setSite] = useState(DEFAULT_SITE_CONTENT);
   const [open, setOpen] = useState(false);
-  const [cat, setCat] = useState('All Photos');
+  const [cat, setCat] = useState(DEFAULT_SITE_CONTENT.gallery.categories[0]);
   const [ready, setReady] = useState(false);
   const [gone, setGone] = useState(false);
   const [top, setTop] = useState(true);
 
   useReveal(ready);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    let active = true;
+    supabase
+      .from('site_content')
+      .select('content')
+      .eq('id', 'main')
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        if (!data) return;
+        if (!isValidSiteContent(data.content)) {
+          throw new Error('Saved site content has an invalid structure.');
+        }
+        if (active) setSite(data.content);
+      })
+      .catch((error) => {
+        console.error('Could not load website content from Supabase:', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    document.title = site.seo.title;
+    [
+      ['meta[name="description"]', site.seo.description],
+      ['meta[property="og:title"]', site.seo.title],
+      ['meta[property="og:description"]', site.seo.description],
+      ['meta[name="twitter:title"]', site.seo.title],
+      ['meta[name="twitter:description"]', site.seo.description],
+    ].forEach(([selector, content]) => {
+      const meta = document.querySelector(selector);
+      if (meta) meta.setAttribute('content', content);
+    });
+  }, [site]);
+
+  useEffect(() => {
+    setCat(site.gallery.categories[0]);
+  }, [site.gallery.categories]);
 
   useEffect(() => {
     const onScroll = () => setTop(window.scrollY < 60);
@@ -243,6 +167,18 @@ export default function App() {
   }, [open, ready]);
 
   const go = () => setOpen(false);
+  const NAV = [
+    ['story', site.navigation.story],
+    ['why', site.navigation.why],
+    ['rooms', site.navigation.rooms],
+    ['gallery', site.navigation.gallery],
+    ['experiences', site.navigation.experiences],
+    ['reviews', site.navigation.reviews],
+    ['book', site.navigation.book],
+  ];
+  const whatsapp = (
+    message = `Hi! I would like to check availability at ${site.brand.name} Homestay.`
+  ) => wa(site.contact.whatsappNumber, message);
 
   return (
     <>
@@ -257,6 +193,10 @@ export default function App() {
         <Loader
           onReveal={() => setReady(true)}
           onDone={() => setGone(true)}
+          title={site.loader.title}
+          location={site.loader.location}
+          region={site.loader.region}
+          tagline={site.loader.tagline}
         />
       )}
 
@@ -271,8 +211,8 @@ export default function App() {
       >
         <div className="wrap nav-in">
           <a href="#top" className="brand" onClick={go}>
-            <img src={img('logo')} alt="The Winds logo" />
-            The Winds
+            <img src={img(site.brand.logoImage)} alt={`${site.brand.name} logo`} />
+            {site.brand.name}
           </a>
 
           <nav className="dnav" aria-label="Main navigation">
@@ -284,7 +224,7 @@ export default function App() {
           </nav>
 
           <a className="pill dark nav-cta" href="#book">
-            Book Your Stay
+            {site.navigation.book}
           </a>
 
           <button
@@ -309,36 +249,35 @@ export default function App() {
           </a>
         ))}
 
-        <a className="pill dark" href={wa()} onClick={go}>
-          Book on WhatsApp
+        <a className="pill dark" href={whatsapp()} onClick={go}>
+          {site.hero.bookButton}
         </a>
       </nav>
 
       <main id="top">
-        <section className="hero">
-          <HeroGL />
+        <section
+          className="hero"
+          style={{
+            backgroundImage: `url(${img(site.hero.slides[0]?.image || 'home')})`,
+          }}
+        >
+          <HeroGL slides={site.hero.slides} />
 
           <div className="wrap hero-in">
             <h1 className="rv">
-              THE WINDS
-              <br />
-              HOMESTAY
+              <Lines text={site.hero.title} />
             </h1>
 
             <div className="hero-row rv">
-              <p>
-                A peaceful home in the hills of Wayanad. Green
-                views, cozy rooms and a slower kind of stay.
-                Rooms from ₹1,100 per person.
-              </p>
+              <p>{site.hero.description}</p>
 
               <div className="btns">
                 <a className="pill" href="#rooms">
-                  Rooms & Rates
+                  {site.hero.roomsButton}
                 </a>
 
-                <a className="pill dark" href={wa()}>
-                  Book on WhatsApp
+                <a className="pill dark" href={whatsapp()}>
+                  {site.hero.bookButton}
                 </a>
               </div>
             </div>
@@ -347,12 +286,7 @@ export default function App() {
 
         <section className="sec">
           <div className="wrap stats rv">
-            {[
-              ['2', 'bedrooms in the apartment'],
-              ['₹1,100', 'private room per person'],
-              ['₹2,400', 'full apartment per person'],
-              ['24/7', 'WhatsApp enquiries'],
-            ].map(([value, label]) => (
+            {site.stats.map(({ value, label }) => (
               <div key={label}>
                 <b>{value}</b>
                 <span>{label}</span>
@@ -363,36 +297,23 @@ export default function App() {
 
         <Sec
           id="story"
-          tag="Our Story"
+          tag={site.story.tag}
           title={
-            <>
-              A HOME IN THE HILLS,
-              <br />
-              MADE FOR SLOW DAYS.
-            </>
+            <Lines text={site.story.title} />
           }
         >
           <div className="two">
-            <p className="rv">
-              Tucked among the greenery of Meppadi, The Winds
-              Homestay is a peaceful place surrounded by tea
-              estates and cool mountain air. Comfortable rooms,
-              warm interiors and beautiful surroundings make
-              room for unhurried mornings and quiet evenings.
-            </p>
-
-            <p className="rv">
-              Whether you are travelling alone, visiting with
-              friends or spending time with family, find a
-              comfortable base for exploring Wayanad. Stay
-              with us. Feel at home.
-            </p>
+            {site.story.paragraphs.map((paragraph, index) => (
+              <p className="rv" key={`${index}-${paragraph}`}>
+                {paragraph}
+              </p>
+            ))}
           </div>
 
           <div className="frame rv">
             <img
-              src={img('hills')}
-              alt="Green tea hills of Meppadi"
+              src={img(site.story.image)}
+              alt={site.story.imageAlt}
               style={{
                 transform: 'translateY(calc(var(--sy) * -0.03px))',
               }}
@@ -405,36 +326,11 @@ export default function App() {
 
         <Sec
           id="why"
-          tag="Why Stay"
-          title="WHY STAY WITH US"
+          tag={site.why.tag}
+          title={site.why.title}
         >
           <div className="grid3">
-            {[
-              [
-                'Cozy rooms',
-                'Comfortable bedrooms for a relaxing stay in the hills.',
-              ],
-              [
-                'Flexible stays',
-                'Choose a single room or book the complete apartment.',
-              ],
-              [
-                'Scenic surroundings',
-                'Discover tea plantations, green valleys and the Western Ghats.',
-              ],
-              [
-                'Warm hospitality',
-                'Get local guidance and help planning nearby activities.',
-              ],
-              [
-                'Explore Wayanad',
-                'Use Meppadi as a base for exploring local attractions.',
-              ],
-              [
-                'Clear pricing',
-                'Starting rates of ₹1,100 and ₹2,400 per person for the two options.',
-              ],
-            ].map(([title, description]) => (
+            {site.why.items.map(({ title, description }) => (
               <div className="cell rv" key={title}>
                 <h3>{title}</h3>
                 <p>{description}</p>
@@ -445,17 +341,17 @@ export default function App() {
 
         <Sec
           id="rooms"
-          tag="Rooms & Rates"
-          title="FIND YOUR STAY"
-          aside="Rates are per person. Confirm the final price, occupancy, facilities and availability with the host before booking."
+          tag={site.rooms.tag}
+          title={site.rooms.title}
+          aside={site.rooms.aside}
         >
           <div className="rooms">
-            {ROOMS.map((room) => (
-              <article className="room rv" key={room.n}>
+            {site.rooms.items.map((room) => (
+              <article className="room rv" key={room.name}>
                 <div className="ph">
                   <img
-                    src={img(room.i)}
-                    alt={room.n}
+                    src={img(room.image)}
+                    alt={room.name}
                     loading="lazy"
                     decoding="async"
                     onLoad={L}
@@ -465,35 +361,35 @@ export default function App() {
 
                 <div className="room-b">
                   <div className="room-t">
-                    <h3>{room.n}</h3>
+                    <h3>{room.name}</h3>
 
                     <b>
-                      ₹{room.p}
-                      <small> / person</small>
+                      ₹{room.price}
+                      <small> / {room.rateUnit}</small>
                     </b>
                   </div>
 
                   <p className="meta">
-                    {room.g} · {room.b}
+                    {room.guests} · {room.details}
                   </p>
 
-                  <p>{room.d}</p>
+                  <p>{room.description}</p>
 
                   <ul>
-                    {room.a.map((amenity) => (
+                    {room.amenities.map((amenity) => (
                       <li key={amenity}>{amenity}</li>
                     ))}
                   </ul>
 
                   <a
                     className="pill dark"
-                    href={wa(
-                      `Hi! I would like to enquire about ${room.n}. The listed starting rate is ₹${room.p} per person. Check-in: , Check-out: , Guests: . Please confirm availability and the final price.`
+                    href={whatsapp(
+                      `Hi! I would like to enquire about ${room.name}. The listed starting rate is ₹${room.price} per ${room.rateUnit}. Check-in: , Check-out: , Guests: . Please confirm availability and the final price.`
                     )}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Enquire & Book
+                    {site.rooms.enquireButton}
                   </a>
                 </div>
               </article>
@@ -503,16 +399,11 @@ export default function App() {
 
         <Sec
           id="gallery"
-          tag="Gallery"
-          title="THE HOME & ITS VIEWS"
+          tag={site.gallery.tag}
+          title={site.gallery.title}
         >
           <div className="chips rv">
-            {[
-              'All Photos',
-              'The Home',
-              'Interiors',
-              'Green Views',
-            ].map((category) => (
+            {site.gallery.categories.map((category) => (
               <button
                 key={category}
                 className={
@@ -526,25 +417,28 @@ export default function App() {
           </div>
 
           <div className="gal">
-            {PICS.filter(
-              (picture) =>
-                cat === 'All Photos' || picture[1] === cat
-            ).map(([file, , description], index) => (
+            {site.gallery.items
+              .filter(
+                (picture) =>
+                  cat === site.gallery.categories[0] ||
+                  picture.category === cat
+              )
+              .map((picture, index) => (
               <figure
-                key={file}
+                key={`${picture.image}-${picture.alt}`}
                 className={
                   'rv' + (index % 5 === 0 ? ' wide' : '')
                 }
               >
                 <img
-                  src={img(file)}
-                  alt={description}
+                  src={img(picture.image)}
+                  alt={picture.alt}
                   loading="lazy"
                   decoding="async"
                   onLoad={L}
                   onError={L}
                 />
-                <figcaption>{description}</figcaption>
+                <figcaption>{picture.alt}</figcaption>
               </figure>
             ))}
           </div>
@@ -552,12 +446,12 @@ export default function App() {
 
         <Sec
           id="experiences"
-          tag="Experiences"
-          title="THINGS TO DO NEARBY"
-          aside="Distances and travel times are estimates. Ask the host about current access conditions."
+          tag={site.experiences.tag}
+          title={site.experiences.title}
+          aside={site.experiences.aside}
         >
           <div className="list">
-            {EXP.map(([title, description, distance]) => (
+            {site.experiences.items.map(({ title, description, distance }) => (
               <div className="row rv" key={title}>
                 <h3>{title}</h3>
                 <p>{description}</p>
@@ -567,43 +461,34 @@ export default function App() {
           </div>
 
           <div className="grid3 seas">
-            {SEAS.map(([title, season, description]) => (
+            {site.experiences.seasons.map(({ title, dates, description }) => (
               <div className="cell rv" key={title}>
-                <span className="meta">{season}</span>
+                <span className="meta">{dates}</span>
                 <h3>{title}</h3>
                 <p>{description}</p>
               </div>
             ))}
           </div>
 
-          <p className="meta rv">
-            Pack a light jacket, comfortable walking shoes,
-            mosquito repellent, waterproofs and a camera.
-          </p>
+          <p className="meta rv">{site.experiences.packingNote}</p>
         </Sec>
 
         <Sec
           id="reviews"
-          tag="Reviews"
-          title="GUEST WORDS"
+          tag={site.reviews.tag}
+          title={site.reviews.title}
         >
-          <blockquote className="rv">
-            <p>
-              A peaceful stay with balcony views of misty hills.
-              Courteous hosts who helped with our 900 Kandi
-              passes, and a home-cooked Kerala breakfast of
-              appam and stew.
-            </p>
-
-            <cite>
-              Aditya Nair, Bangalore · Couple's getaway · 5 stars
-            </cite>
-          </blockquote>
+          {site.reviews.items.map(({ quote, citation }) => (
+            <blockquote className="rv" key={citation}>
+              <p>{quote}</p>
+              <cite>{citation}</cite>
+            </blockquote>
+          ))}
         </Sec>
 
-        <Sec id="faq" tag="FAQ" title="GOOD TO KNOW">
+        <Sec id="faq" tag={site.faq.tag} title={site.faq.title}>
           <div className="list">
-            {FAQ.map(([question, answer]) => (
+            {site.faq.items.map(({ question, answer }) => (
               <details className="rv" key={question}>
                 <summary>{question}</summary>
                 <p>{answer}</p>
@@ -614,67 +499,48 @@ export default function App() {
 
         <Sec
           id="find"
-          tag="Find Us"
-          title="MEPPADI, WAYANAD"
+          tag={site.find.tag}
+          title={site.find.title}
         >
           <div className="grid3">
             <div className="cell rv">
-              <h3>Address</h3>
-              <p>
-                Meppadi, Wayanad District, Kerala 673577, India
-              </p>
+              <h3>{site.find.addressTitle}</h3>
+              <p>{site.contact.address}</p>
 
               <a
                 className="pill"
-                href="https://www.google.com/maps/search/?api=1&query=The+Winds+Homestay+Meppadi+Wayanad"
+                href={site.contact.mapUrl}
                 target="_blank"
                 rel="noreferrer"
               >
-                Open in Maps
+                {site.find.mapButton}
               </a>
             </div>
 
-            <div className="cell rv">
-              <h3>By air and train</h3>
-              <p>
-                Calicut Airport and Kozhikode Railway Station
-                are options for reaching Wayanad. Travel time
-                varies with the route and road conditions.
-              </p>
-            </div>
-
-            <div className="cell rv">
-              <h3>By road from Bangalore</h3>
-              <p>
-                Travel via Mysore, Gundlupet, Bandipur and
-                Sultan Bathery towards Meppadi. Check current
-                route conditions before travelling.
-              </p>
-            </div>
+            {site.find.directions.map(({ title, description }) => (
+              <div className="cell rv" key={title}>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </div>
+            ))}
           </div>
         </Sec>
 
         <section id="book" className="cta">
           <div className="wrap">
             <h2 className="rv">
-              COME AS A GUEST.
-              <br />
-              FEEL LIKE YOU'RE HOME.
+              <Lines text={site.booking.title} />
             </h2>
 
-            <p className="rv">
-              Planning a Wayanad getaway? Message the host
-              with your dates, number of guests and preferred
-              accommodation to check availability and prices.
-            </p>
+            <p className="rv">{site.booking.description}</p>
 
             <a
               className="pill dark big rv"
-              href={wa()}
+              href={whatsapp()}
               target="_blank"
               rel="noreferrer"
             >
-              Book on WhatsApp
+              {site.booking.button}
             </a>
           </div>
         </section>
@@ -683,22 +549,19 @@ export default function App() {
       <footer className="foot">
         <div className="wrap">
           <div>
-            <b>The Winds, Homestay · Wayanad</b>
-            <p>
-              A peaceful homestay in Meppadi, surrounded by
-              greenery and mountain air. Stay with us. Feel at home.
-            </p>
+            <b>{site.footer.title}</b>
+            <p>{site.footer.description}</p>
           </div>
 
           <div className="fl">
             {[
-              ['rooms', 'Rooms & Rates'],
-              ['gallery', 'Gallery'],
-              ['experiences', 'Experiences'],
-              ['reviews', 'Reviews'],
-              ['faq', 'FAQ'],
-              ['find', 'Find Us'],
-              ['book', 'Contact'],
+              ['rooms', site.navigation.rooms],
+              ['gallery', site.navigation.gallery],
+              ['experiences', site.navigation.experiences],
+              ['reviews', site.navigation.reviews],
+              ['faq', site.navigation.faq],
+              ['find', site.navigation.find],
+              ['book', site.navigation.contact],
             ].map(([id, label]) => (
               <a key={id} href={'#' + id}>
                 {label}
@@ -707,24 +570,30 @@ export default function App() {
           </div>
 
           <div>
-            <a href="tel:+919990815181">
-              +91 99908 15181
+            <a href={`tel:${site.contact.whatsappNumber}`}>
+              {site.contact.phoneDisplay}
             </a>
 
-            <a href="mailto:windshomestay@gmail.com">
-              windshomestay@gmail.com
+            <a href={`mailto:${site.contact.email}`}>
+              {site.contact.email}
             </a>
 
-            <p>
-              Meppadi, Wayanad District, Kerala 673577, India
-            </p>
+            <p>{site.contact.address}</p>
           </div>
 
           <small>
-            © 2026 The Winds Homestay, Meppadi · Wayanad · Kerala.
+            © {new Date().getFullYear()} {site.footer.copyright}
           </small>
         </div>
       </footer>
     </>
+  );
+}
+
+export default function App() {
+  return window.location.pathname.replace(/\/+$/, '') === '/admin' ? (
+    <Admin />
+  ) : (
+    <Website />
   );
 }

@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react'
 // Preloads fonts + hero photos, shows progress, then lifts away. Never blocks longer than 8s.
 const IMGS=['home','hills','living','bedroom','logo']
-export default function Loader({onReveal,onDone}){
+export default function Loader({onReveal,onDone,title,location,region,tagline}){
   const [pct,setPct]=useState(0),[out,setOut]=useState(false)
   useEffect(()=>{
     let done=0,dead=false;const total=IMGS.length+1,t0=performance.now()
@@ -13,10 +13,10 @@ export default function Loader({onReveal,onDone}){
     })
     return()=>{dead=true}
   },[])
-  return(<div className={'loader'+(out?' out':'')} role="status" aria-live="polite" aria-label="Loading The Winds Homestay">
-    <div className="ld-top"><span>Meppadi, Wayanad</span><span>Kerala, India</span></div>
-    <h1 className="ld-t"><span><i>THE WINDS</i></span><span><i>HOMESTAY</i></span></h1>
+  return(<div className={'loader'+(out?' out':'')} role="status" aria-live="polite" aria-label={`Loading ${title.replace('\n',' ')}`}>
+    <div className="ld-top"><span>{location}</span><span>{region}</span></div>
+    <h1 className="ld-t">{title.split('\n').map((line,index)=><span key={`${index}-${line}`}><i>{line}</i></span>)}</h1>
     <div><div className="ld-bar"><b style={{transform:`scaleX(${pct/100})`}}/></div>
-      <div className="ld-top"><span>Stay with us. Feel at home.</span><span className="ld-n">{pct}%</span></div></div>
+      <div className="ld-top"><span>{tagline}</span><span className="ld-n">{pct}%</span></div></div>
   </div>)
 }
