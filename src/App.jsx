@@ -25,25 +25,25 @@ const NAV = [
 ];
 
 const ROOMS = [
-  {
-    n: 'Private Room',
-    p: '1,100',
-    g: 'Per person',
-    b: 'One room · Two-bedroom apartment',
-    i: 'bedroom',
-    d: 'A comfortable private room in our two-bedroom apartment, perfect for travellers looking for a peaceful and affordable stay in Meppadi, Wayanad.',
-    a: [
-      'Comfortable bedroom',
-      'Wi-Fi',
-      'Hot water',
-      'Peaceful surroundings',
-      'Comfortable bedding',
-      'Ideal for solo travellers and couples',
-    ],
-  },
+  // {
+  //   n: 'Private Room',
+  //   p: '1,100',
+  //   g: 'Per Room',
+  //   b: 'One room · Two-bedroom apartment',
+  //   i: 'bedroom',
+  //   d: 'A comfortable private room in our two-bedroom apartment, perfect for travellers looking for a peaceful and affordable stay in Meppadi, Wayanad.',
+  //   a: [
+  //     'Comfortable bedroom',
+  //     'Wi-Fi',
+  //     'Hot water',
+  //     'Peaceful surroundings',
+  //     'Comfortable bedding',
+  //     'Ideal for solo travellers and couples',
+  //   ],
+  // },
   {
     n: 'Full Apartment',
-    p: '2,400',
+    p: '1,100',
     g: 'Per person',
     b: 'Entire apartment · Two bedrooms',
     i: 'suite',
@@ -246,6 +246,13 @@ export default function App() {
 
   return (
     <>
+      <style>{`
+        /* Keep room photos clean: no price labels or pseudo-element overlays. */
+        .room .ph { position: relative; overflow: hidden; }
+        .room .ph::before,
+        .room .ph::after { content: none !important; display: none !important; }
+        .room .ph img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      `}</style>
       {!gone && (
         <Loader
           onReveal={() => setReady(true)}
